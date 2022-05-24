@@ -6,8 +6,8 @@ if __name__ == '__main__':
 
     filter_info = dict()
     filter_info['account'] = '0x199581b423d9707b4b49921ce740c4e4856f0da9'
-    filter_info['date_from'] = '2022-04-28 00:00:00'
-    filter_info['date_end'] = '2022-05-10 00:00:00'
+    filter_info['date_from'] = '2020-10-08 00:00:00'
+    filter_info['date_end'] = '2022-05-22 00:00:00'
 
     config = dict()
     config['config_network'] = 'mocMainnet2'

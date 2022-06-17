@@ -54,6 +54,9 @@ class IncentiveHelper(object):
             sort=[("date", 1)]
         )
 
+        trace_accounts = list()
+        trace_accounts.append(filter_info["account"])
+
         rewards_list = list()
         for reward in mocin_rewards:
             block_n = reward["reason"]["end_block"]
@@ -73,34 +76,44 @@ class IncentiveHelper(object):
             info_reward["bpro_holding"] = bpro_holding
             info_reward["total_bpro"] = total_bpro
             info_reward["assigned_date"] = reward["date"]
-            info_reward["moc_balance"] = moc_token.balance_of(filter_info["account"], block_identifier=block_n)
+
+            if reward["account_address"].lower() != reward["destination_address"].lower():
+                info_reward["destination_address"] = reward["destination_address"].lower()
+                info_reward["moc_balance"] = moc_token.balance_of(reward["destination_address"], block_identifier=block_n)
+                if info_reward["destination_address"] not in trace_accounts:
+                    trace_accounts.append(info_reward["destination_address"])
+            else:
+                info_reward["destination_address"] = ''
+                info_reward["moc_balance"] = moc_token.balance_of(reward["account_address"], block_identifier=block_n)
 
             rewards_list.append(info_reward)
 
-        mocin_agent_tx = collection_mocin_agent_tx.find(
-            {
-                "address": filter_info["account"],
-                "state": "complete",
-                "result": "ok",
-                "createdAt": {"$gte": d_from, "$lt": d_end}
-            },
-            sort=[("sentBlocknr", 1)]
-        )
+        for trace_account in trace_accounts:
+            mocin_agent_tx = collection_mocin_agent_tx.find(
+                {
+                    "address": trace_account,
+                    "state": "complete",
+                    "result": "ok",
+                    "createdAt": {"$gte": d_from, "$lt": d_end}
+                },
+                sort=[("sentBlocknr", 1)]
+            )
 
-        for agent_tx in mocin_agent_tx:
-            info_reward = dict()
-            info_reward["action"] = "sent"
-            info_reward["block_n"] = agent_tx["sentBlocknr"]
-            info_reward["moc_rewarded"] = ""
-            info_reward["bpro_holding"] = ""
-            info_reward["total_bpro"] = ""
-            info_reward["sent_hash"] = agent_tx["sentHash"]
-            info_reward["sent_mocs"] = agent_tx["mocs"].to_decimal() / self.precision
-            info_reward["sent_date"] = agent_tx["stateTS"]
-            info_reward["moc_balance"] = moc_token.balance_of(filter_info["account"],
-                                                              block_identifier=info_reward["block_n"])
+            for agent_tx in mocin_agent_tx:
+                info_reward = dict()
+                info_reward["action"] = "sent"
+                info_reward["block_n"] = agent_tx["sentBlocknr"]
+                info_reward["moc_rewarded"] = ""
+                info_reward["bpro_holding"] = ""
+                info_reward["total_bpro"] = ""
+                info_reward["sent_hash"] = agent_tx["sentHash"]
+                info_reward["sent_mocs"] = agent_tx["mocs"].to_decimal() / self.precision
+                info_reward["sent_date"] = agent_tx["stateTS"]
+                info_reward["moc_balance"] = moc_token.balance_of(trace_account,
+                                                                  block_identifier=info_reward["block_n"])
+                info_reward["destination_address"] = ""
 
-            rewards_list.append(info_reward)
+                rewards_list.append(info_reward)
 
         return rewards_list
 
@@ -115,6 +128,7 @@ class IncentiveHelper(object):
                   'BPro Holding',
                   'Total BPro System',
                   'Assign Date',
+                  'Destination Addr',
                   'User MoC Balance',
                   'Sent Amount',
                   'Sent Date']
@@ -154,6 +168,7 @@ class IncentiveHelper(object):
                     bpro_holding,
                     total_bpro,
                     assigned_date,
+                    reward_i["destination_address"],
                     user_moc_balance,
                     sent_amount,
                     sent_date
@@ -171,6 +186,7 @@ class IncentiveHelper(object):
                    'BPro Holding',
                    'Total BPro System',
                    'Assign Date',
+                   'Destination Addr',
                    'User MoC Balance',
                    'Sent Amount',
                    'Sent Date',
@@ -226,6 +242,7 @@ class IncentiveHelper(object):
                         bpro_holding,
                         total_bpro,
                         assigned_date,
+                        reward_i["destination_address"],
                         user_moc_balance,
                         sent_amount,
                         sent_date,

@@ -111,7 +111,7 @@ class IncentiveHelper(object):
                 info_reward["sent_date"] = agent_tx["stateTS"]
                 info_reward["moc_balance"] = moc_token.balance_of(trace_account,
                                                                   block_identifier=info_reward["block_n"])
-                info_reward["destination_address"] = ""
+                info_reward["destination_address"] = trace_account
 
                 rewards_list.append(info_reward)
 
@@ -164,7 +164,7 @@ class IncentiveHelper(object):
                     reward_i["block_n"],
                     reward_i["action"],
                     moc_rewarded,
-                    moc_accumulated,
+                    '%.6f' % moc_accumulated,
                     bpro_holding,
                     total_bpro,
                     assigned_date,
@@ -257,5 +257,141 @@ class IncentiveHelper(object):
         self.report_incentive_account_to_screen(sorted_rewards_list)
         self.report_incentive_account_to_csv(sorted_rewards_list, filter_info)
 
+    def incentive_accumulated(self, filter_info):
 
+        self.connect_node()
+        m_client = self.connect_mongo_client()
 
+        d_from = datetime.datetime.strptime(filter_info["date_from"], '%Y-%m-%d %H:%M:%S')
+        d_end = datetime.datetime.strptime(filter_info["date_end"], '%Y-%m-%d %H:%M:%S')
+
+        collection_mocin_rewards = mongo_manager.collection_mocin_rewards(m_client)
+        collection_mocin_agent_tx = mongo_manager.collection_mocin_agent_tx(m_client)
+
+        mocin_rewards = collection_mocin_rewards.find(
+            {
+                "date": {"$gte": d_from, "$lt": d_end}
+            },
+            sort=[("date", 1)]
+        )
+
+        accumulated_rewards = dict()
+        for reward in mocin_rewards:
+            moc_rewarded = reward["moc_by_origin"].to_decimal() / self.precision
+            account_address = reward['account_address']
+
+            if account_address in accumulated_rewards:
+                accumulated_rewards[account_address] = accumulated_rewards[account_address] + moc_rewarded
+            else:
+                accumulated_rewards[account_address] = moc_rewarded
+
+        mocin_agent_tx = collection_mocin_agent_tx.find(
+            {
+                "state": "complete",
+                "result": "ok",
+                "createdAt": {"$gte": d_from, "$lt": d_end}
+            },
+            sort=[("sentBlocknr", 1)]
+        )
+
+        accumulated_sent = dict()
+        for agent_tx in mocin_agent_tx:
+            account_address = agent_tx['address']
+            sent_mocs = agent_tx["mocs"].to_decimal() / self.precision
+
+            if account_address in accumulated_sent:
+                accumulated_sent[account_address] = accumulated_sent[account_address] + sent_mocs
+            else:
+                accumulated_sent[account_address] = sent_mocs
+
+        report_accumulated = list()
+        for account in accumulated_rewards:
+            info = dict()
+            info['account'] = account
+            info['rewarded'] = accumulated_rewards[account]
+            if account in accumulated_sent:
+                info['sent'] = accumulated_sent[account]
+                info['pending'] = info['rewarded'] - info['sent']
+            else:
+                info['sent'] = 0
+                info['pending'] = info['rewarded']
+
+            report_accumulated.append(info)
+
+        return report_accumulated
+
+    def report_incentive_accumulated(self, filter_info):
+
+        report_accumulated = self.incentive_accumulated(filter_info)
+        self.report_incentive_accumulated_to_screen(report_accumulated)
+        self.report_incentive_accumulated_to_csv(report_accumulated, filter_info)
+
+    @staticmethod
+    def report_incentive_accumulated_to_screen(report_accumulated):
+
+        display_table = []
+        titles = ['#',
+                  'Account',
+                  'Total Rewarded',
+                  'Total Sent',
+                  'Total Pending']
+
+        count = 0
+        total_rewarded = 0
+        total_sent = 0
+        total_pending = 0
+        for reward_i in report_accumulated:
+            count += 1
+
+            total_rewarded += reward_i["rewarded"]
+            total_sent += reward_i["sent"]
+            total_pending += reward_i["pending"]
+
+            display_table.append(
+                [
+                    count,
+                    reward_i["account"],
+                    reward_i["rewarded"],
+                    reward_i["sent"],
+                    reward_i["pending"]
+                ]
+            )
+
+        print(tabulate(display_table, headers=titles, tablefmt="pipe"))
+
+        print("Total Rewarded:", total_rewarded)
+        print("Total Sent:", total_sent)
+        print("Total Pending:", total_pending)
+
+    def report_incentive_accumulated_to_csv(self, report_accumulated, filter_info):
+
+        columns = ['#',
+                   'Account',
+                   'Total Rewarded',
+                   'Total Sent',
+                   'Total Pending']
+
+        d_from = datetime.datetime.strptime(filter_info["date_from"], '%Y-%m-%d %H:%M:%S')
+        d_end = datetime.datetime.strptime(filter_info["date_end"], '%Y-%m-%d %H:%M:%S')
+
+        file_name = 'report_accumulated_{0}_{1}.csv'.format(
+            d_from.strftime("%Y-%m-%d"),
+            d_end.strftime("%Y-%m-%d"))
+
+        destination_file = os.path.join(self.config['path_report'], file_name)
+
+        with open(destination_file, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(columns)
+
+            count = 0
+            for reward_i in report_accumulated:
+                count += 1
+                row = [
+                    count,
+                    reward_i["account"],
+                    reward_i["rewarded"],
+                    reward_i["sent"],
+                    reward_i["pending"]
+                    ]
+                writer.writerow(row)

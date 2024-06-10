@@ -3,10 +3,8 @@ from tabulate import tabulate
 import csv
 import os
 
-from moneyonchain.networks import network_manager
-from moneyonchain.tokens import MoCToken
-
-from .mongo_manager import mongo_manager
+from .base.main import ConnectionHelperMongo
+from .base.token import ERC20Token
 
 
 class IncentiveHelper(object):
@@ -15,36 +13,20 @@ class IncentiveHelper(object):
 
     def __init__(self, config):
         self.config = config
-        self.config_network = config["config_network"]
-        self.connection_network = config["connection_network"]
-
-    def connect_node(self):
-
-        network_manager.connect(
-            connection_network=self.connection_network,
-            config_network=self.config_network)
-
-    def connect_mongo_client(self):
-
-        # connect to mongo db
-        mongo_manager.set_connection(uri=self.config['mongo_uri'], db=self.config['mongo_db'])
-        m_client = mongo_manager.connect()
-
-        return m_client
 
     def incentive_account(self, filter_info):
 
-        self.connect_node()
-        m_client = self.connect_mongo_client()
+        connection_helper = ConnectionHelperMongo(self.config)
 
-        moc_token = MoCToken(network_manager).from_abi()
+        moc_token = ERC20Token(connection_helper.connection_manager,
+                               contract_address=self.config['addresses']['MoCToken'])
 
         d_from = datetime.datetime.strptime(filter_info["date_from"], '%Y-%m-%d %H:%M:%S')
         d_end = datetime.datetime.strptime(filter_info["date_end"], '%Y-%m-%d %H:%M:%S')
 
-        collection_mocin_rewards = mongo_manager.collection_mocin_rewards(m_client)
-        collection_mocin_rewards_extscaninfo = mongo_manager.collection_mocin_rewards_extscaninfo(m_client)
-        collection_mocin_agent_tx = mongo_manager.collection_mocin_agent_tx(m_client)
+        collection_mocin_rewards = connection_helper.mongo_collection('mocin_rewards')
+        collection_mocin_rewards_extscaninfo = connection_helper.mongo_collection('mocin_rewards_extscaninfo')
+        collection_mocin_agent_tx = connection_helper.mongo_collection('mocin_agent_tx')
 
         mocin_rewards = collection_mocin_rewards.find(
             {
@@ -259,14 +241,13 @@ class IncentiveHelper(object):
 
     def incentive_accumulated(self, filter_info):
 
-        self.connect_node()
-        m_client = self.connect_mongo_client()
+        connection_helper = ConnectionHelperMongo(self.config)
 
         d_from = datetime.datetime.strptime(filter_info["date_from"], '%Y-%m-%d %H:%M:%S')
         d_end = datetime.datetime.strptime(filter_info["date_end"], '%Y-%m-%d %H:%M:%S')
 
-        collection_mocin_rewards = mongo_manager.collection_mocin_rewards(m_client)
-        collection_mocin_agent_tx = mongo_manager.collection_mocin_agent_tx(m_client)
+        collection_mocin_rewards = connection_helper.mongo_collection('mocin_rewards')
+        collection_mocin_agent_tx = connection_helper.mongo_collection('mocin_agent_tx')
 
         mocin_rewards = collection_mocin_rewards.find(
             {

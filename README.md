@@ -5,42 +5,17 @@ Helper to debug incentive assigned MoC to an account from the reward program.
 **Requirement and installation**
  
 * We need Python 3.6+
-* Brownie
-* Mongo db MoC Rewards (database)
+* Mongo db stable
 
 Install libraries
 
 `pip install -r requirements.txt`
 
-[Brownie](https://github.com/eth-brownie/brownie) is a Python-based development and testing framework for smart contracts.
-Brownie is easy so we integrated it with Money on Chain.
-
-`pip install eth-brownie==1.16.0`
-
-**Network Connections**
-
-First we need to install custom networks (RSK Nodes) in brownie:
-
-```
-console> brownie networks add RskNetwork rskTestnetPublic host=https://public-node.testnet.rsk.co chainid=31 explorer=https://blockscout.com/rsk/mainnet/api
-console> brownie networks add RskNetwork rskTestnetLocal host=http://localhost:4444 chainid=31 explorer=https://blockscout.com/rsk/mainnet/api
-console> brownie networks add RskNetwork rskMainnetPublic host=https://public-node.rsk.co chainid=30 explorer=https://blockscout.com/rsk/mainnet/api
-console> brownie networks add RskNetwork rskMainnetLocal host=http://localhost:4444 chainid=30 explorer=https://blockscout.com/rsk/mainnet/api
-```
-
-**Connection table**
-
-| Network Name      | Network node          | Host                               | Chain    |
-|-------------------|-----------------------|------------------------------------|----------|
-| rskTestnetPublic   | RSK Testnet Public    | https://public-node.testnet.rsk.co | 31       |    
-| rskTestnetLocal    | RSK Testnet Local     | http://localhost:4444              | 31       |
-| rskMainnetPublic  | RSK Mainnet Public    | https://public-node.rsk.co         | 30       |
-| rskMainnetLocal   | RSK Mainnet Local     | http://localhost:4444              | 30       |
-
-
 ### Usage
 
 #### Incentive account
+
+edit `config.json` or paste information from json file in `settings` folder  
 
 `python ./incentive_account.py`
 

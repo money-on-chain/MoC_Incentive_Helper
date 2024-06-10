@@ -1,0 +1,10 @@
+{
+  "uri": "https://public-node.rsk.co",
+  "mongo": {
+    "uri": "mongodb://localhost:27017/",
+    "db": "doc_mainnet_rewards"
+  },
+  "addresses": {
+    "MoCToken": "0x9aC7Fe28967b30e3a4E6E03286D715B42B453d10"
+  }
+}
